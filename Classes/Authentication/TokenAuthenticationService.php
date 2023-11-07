@@ -23,6 +23,7 @@ class TokenAuthenticationService extends AbstractAuthenticationService
 
     public function getUser()
     {
+        if(($_SERVER['REQUEST_METHOD'] ?? 'GET') != 'GET') return false;
         $token = $this->getTokenFromRequest();
         if (!$token) {
             return false;
