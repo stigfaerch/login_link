@@ -63,7 +63,7 @@ class TokenRepository
         $this->getConnection()->truncate(self::TABLE);
     }
 
-    public function add(int $userId, string $authType, string $token, int $invokedBy): void
+    public function add(int $userId, string $authType, string $token, int $invokedBy, int $validMinutes = null): void
     {
         $this->removeByUserId($userId, $authType);;
         $this->getConnection()->insert(
@@ -72,7 +72,7 @@ class TokenRepository
                 'user_uid' => $userId,
                 'auth_type' => $authType,
                 'token' => $token,
-                'valid_until' => time() + self::TOKEN_VALIDITY,
+                'valid_until' => time() + ($validMinutes ? $validMinutes * 60 : self::TOKEN_VALIDITY),
                 'invoked_by' => $invokedBy,
             ]
         );

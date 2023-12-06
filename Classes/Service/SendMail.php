@@ -46,7 +46,8 @@ class SendMail
             $recordId,
             $authType,
             $token,
-            0
+            0,
+            15
         );
         $url = GeneralUtility::makeInstance(\TYPO3\CMS\Extbase\Mvc\Web\Routing\UriBuilder::class)
             ->setTargetPageUid($GLOBALS['TYPO3_REQUEST']->getAttribute('frontend.controller')->id)
@@ -74,7 +75,7 @@ class SendMail
             ->assign('email', $receiverEmailAddress)
             ->assign('loginUrl', $url)
             ->assign('site', $GLOBALS['TYPO3_REQUEST']->getAttribute('site')->getConfiguration());
-            GeneralUtility::makeInstance(Mailer::class)->send($email);
+        GeneralUtility::makeInstance(Mailer::class)->send($email);
     }
 
     /**
