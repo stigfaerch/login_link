@@ -9,6 +9,8 @@ use GeorgRinger\LoginLink\Service\TokenGenerator;
 use Psr\Http\Message\ResponseInterface;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
+use TYPO3\CMS\Core\Database\Query\Restriction\HiddenRestriction;
 use TYPO3\CMS\Core\Exception;
 use TYPO3\CMS\Core\Localization\LanguageService;
 use TYPO3\CMS\Core\TypoScript\TypoScriptService;
@@ -154,21 +156,27 @@ class PluginController extends ActionController
         if (!GeneralUtility::validEmail($email)) {
             $validationError = $this->getLanguageService()->getLL('plugin.validation_email_syntax_error');
         } else {
-            $searchIdentifiers['email'] = $email;
+            $qb = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('fe_users');
+            $qb->getRestrictions()->removeAll()->add(GeneralUtility::makeInstance(DeletedRestriction::class));
+            $qb->select('uid', 'disable')->from('fe_users');
+            $qb->andWhere($qb->expr()->eq('email', $qb->createNamedParameter($email)));
             if ($pageId = $this->getStoragePid()) {
-                $searchIdentifiers['pid'] = $pageId;
+                $qb->andWhere($qb->expr()->eq('pid', $qb->createNamedParameter($pageId)));
             }
-            $connection = GeneralUtility::makeInstance(ConnectionPool::class)->getConnectionForTable('fe_users');
-            $users = $connection->select(['uid'], 'fe_users', $searchIdentifiers)->fetchFirstColumn();
+            $users = $qb->execute()->fetchAllKeyValue();
             if (count($users) === 0) {
-                $validationError = $this->getLanguageService()->getLL('plugin.validation_no_users_found_error');
+                $validationError = ['message' => $this->getLanguageService()->getLL('plugin.validation_no_users_found_error'), 'code' => 1704878341];
             } elseif (count($users) > 1) {
-                $validationError = $this->getLanguageService()->getLL('plugin.validation_multiple_users_found_error');
+                $validationError = ['message' => $this->getLanguageService()->getLL('plugin.validation_multiple_users_found_error'), 'code' => 1704878342];
             } else {
-                return (int)$users[0];
+                if(current($users) === 1) {
+                    $validationError = ['message' => $this->getLanguageService()->getLL('plugin.validation_disabled_user_found_error'), 'code' => 1704878343];
+                } else {
+                    return (int)key($users);
+                }
             }
         }
-        throw new UserValidationException($validationError);
+        throw new UserValidationException($validationError['message'], $validationError['code']);
     }
 
     protected function getLanguageService(): LanguageService

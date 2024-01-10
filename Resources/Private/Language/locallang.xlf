@@ -33,6 +33,9 @@
 			<trans-unit id="plugin.validation_no_users_found_error" xml:space="preserve">
 				<source>No user account was found with that e-mail address.</source>
 			</trans-unit>
+			<trans-unit id="plugin.validation_disabled_user_found_error" xml:space="preserve">
+				<source>User account was found, but is disabled.</source>
+			</trans-unit>
 			<trans-unit id="plugin.validation_multiple_users_found_error" xml:space="preserve">
 				<source>More than one user account was found with that e-mail address. E-mail with login link was not sent.</source>
 			</trans-unit>
