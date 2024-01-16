@@ -47,10 +47,7 @@ class PluginController extends ActionController
     protected function initializeAction(): void
     {
         parent::initializeAction();
-//        $this->languageService = $GLOBALS['LANG'];
         $this->configurationManager = GeneralUtility::makeInstance(ConfigurationManager::class);
-        $this->languageService = $this->getLanguageService();
-        $this->languageService->includeLLFile('EXT:login_link/Resources/Private/Language/locallang.xlf');
     }
 
     /**

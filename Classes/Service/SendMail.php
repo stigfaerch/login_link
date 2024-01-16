@@ -10,6 +10,7 @@ use TYPO3\CMS\Core\Localization\LanguageService;
 use TYPO3\CMS\Core\Mail\FluidEmail;
 use TYPO3\CMS\Core\Mail\Mailer;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Extbase\Utility\LocalizationUtility;
 
 class SendMail
 {
@@ -38,7 +39,7 @@ class SendMail
      */
     public function sendMailToFrontendUser(int $recordId, string $receiverEmailAddress): void
     {
-        $this->getLanguageService()->includeLLFile('EXT:login_link/Resources/Private/Language/locallang.xlf');
+//        $this->getLanguageService()->includeLLFile('EXT:login_link/Resources/Private/Language/locallang.xlf');
 
         $authType = 'fe';
         $token = $this->tokenGenerator->generate();
@@ -63,15 +64,17 @@ class SendMail
         if(!$mailFromAddress) {
             throw new Exception('The pluginMailFromAddress extension configuration or $GLOBALS[\'TYPO3_CONF_VARS\'][\'MAIL\'][\'defaultMailFromAddress\'] needs to be configured to be able to send an e-email.');
         }
+
+
         $email
             ->to($receiverEmailAddress)
             ->from(new Address($mailFromAddress, $mailFromName))
-            ->subject(sprintf($this->getLanguageService()->getLL('plugin.email_subject'), $GLOBALS['TYPO3_REQUEST']->getAttribute('site')->getAttribute('websiteTitle')))
+            ->subject(LocalizationUtility::translate('plugin.email_subject','login_link', [$GLOBALS['TYPO3_REQUEST']->getAttribute('site')->getAttribute('websiteTitle')]))
             ->format('html') // only HTML mail
             ->setTemplate('MagicLoginLink')
-            ->assign('headline', sprintf($this->getLanguageService()->getLL('plugin.email_subject'), $GLOBALS['TYPO3_REQUEST']->getAttribute('site')->getAttribute('websiteTitle')))
-            ->assign('introduction', sprintf($this->getLanguageService()->getLL('plugin.email_introduction'), $receiverEmailAddress))
-            ->assign('content', $this->getLanguageService()->getLL('plugin.email_content'))
+            ->assign('headline', LocalizationUtility::translate('plugin.email_subject','login_link', [$GLOBALS['TYPO3_REQUEST']->getAttribute('site')->getAttribute('websiteTitle')]))
+            ->assign('introduction', LocalizationUtility::translate('plugin.email_introduction','login_link', [$receiverEmailAddress]))
+            ->assign('content', LocalizationUtility::translate('plugin.email_content','login_link', [$GLOBALS['TYPO3_REQUEST']->getAttribute('site')->getAttribute('websiteTitle')]))
             ->assign('email', $receiverEmailAddress)
             ->assign('loginUrl', $url)
             ->assign('site', $GLOBALS['TYPO3_REQUEST']->getAttribute('site')->getConfiguration());
