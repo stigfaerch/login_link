@@ -64,10 +64,7 @@ class SendMail
         if(!$mailFromAddress) {
             throw new Exception('The pluginMailFromAddress extension configuration or $GLOBALS[\'TYPO3_CONF_VARS\'][\'MAIL\'][\'defaultMailFromAddress\'] needs to be configured to be able to send an e-email.');
         }
-        $webSiteTitle = '';
-        if($GLOBALS['TYPO3_REQUEST']->getAttribute('site')->hasAttribute('websiteTitle')) {
-            $webSiteTitle = $GLOBALS['TYPO3_REQUEST']->getAttribute('site')->getAttribute('websiteTitle');
-        }
+        $webSiteTitle = $GLOBALS['TYPO3_REQUEST']->getAttribute('site')->getConfiguration()['websiteTitle'] ?? '';
 
         $email
             ->to($receiverEmailAddress)
