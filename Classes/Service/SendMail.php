@@ -64,17 +64,20 @@ class SendMail
         if(!$mailFromAddress) {
             throw new Exception('The pluginMailFromAddress extension configuration or $GLOBALS[\'TYPO3_CONF_VARS\'][\'MAIL\'][\'defaultMailFromAddress\'] needs to be configured to be able to send an e-email.');
         }
-
+        $webSiteTitle = '';
+        if($GLOBALS['TYPO3_REQUEST']->getAttribute('site')->hasAttribute('websiteTitle')) {
+            $webSiteTitle = $GLOBALS['TYPO3_REQUEST']->getAttribute('site')->getAttribute('websiteTitle');
+        }
 
         $email
             ->to($receiverEmailAddress)
             ->from(new Address($mailFromAddress, $mailFromName))
-            ->subject(LocalizationUtility::translate('plugin.email_subject','login_link', [$GLOBALS['TYPO3_REQUEST']->getAttribute('site')->getAttribute('websiteTitle')]))
+            ->subject(LocalizationUtility::translate('plugin.email_subject','login_link', [$webSiteTitle]))
             ->format('html') // only HTML mail
             ->setTemplate('MagicLoginLink')
-            ->assign('headline', LocalizationUtility::translate('plugin.email_subject','login_link', [$GLOBALS['TYPO3_REQUEST']->getAttribute('site')->getAttribute('websiteTitle')]))
+            ->assign('headline', LocalizationUtility::translate('plugin.email_subject','login_link', [$webSiteTitle]))
             ->assign('introduction', LocalizationUtility::translate('plugin.email_introduction','login_link', [$receiverEmailAddress]))
-            ->assign('content', LocalizationUtility::translate('plugin.email_content','login_link', [$GLOBALS['TYPO3_REQUEST']->getAttribute('site')->getAttribute('websiteTitle')]))
+            ->assign('content', LocalizationUtility::translate('plugin.email_content','login_link', [$webSiteTitle]))
             ->assign('email', $receiverEmailAddress)
             ->assign('loginUrl', $url)
             ->assign('site', $GLOBALS['TYPO3_REQUEST']->getAttribute('site')->getConfiguration());
