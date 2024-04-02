@@ -34,10 +34,11 @@ class SendMail
     /**
      * @param int $recordId
      * @param string $receiverEmailAddress
+     * @param array $settings
      * @throws Exception
      * @throws TransportExceptionInterface
      */
-    public function sendMailToFrontendUser(int $recordId, string $receiverEmailAddress): void
+    public function sendMailToFrontendUser(int $recordId, string $receiverEmailAddress, array $settings): void
     {
 //        $this->getLanguageService()->includeLLFile('EXT:login_link/Resources/Private/Language/locallang.xlf');
 
@@ -58,11 +59,10 @@ class SendMail
 
         $email = GeneralUtility::makeInstance(FluidEmail::class);
         $email->setRequest($GLOBALS['TYPO3_REQUEST']);
-        $mailFromAddress = $this->loginlinkExtensionConfiguration['pluginMailFromAddress'] ?: ($GLOBALS['TYPO3_CONF_VARS']['MAIL']['defaultMailFromAddress'] ?? null);
-        $mailFromName = $this->loginlinkExtensionConfiguration['pluginMailFromAddress'] ?:
-            ($GLOBALS['TYPO3_CONF_VARS']['MAIL']['defaultMailFromName'] ?? '');
+        $mailFromAddress = ($settings['email']['fromAddress'] ?? false) ?: ($this->loginlinkExtensionConfiguration['pluginMailFromAddress'] ?? false) ?: ($GLOBALS['TYPO3_CONF_VARS']['MAIL']['defaultMailFromAddress'] ?? false);
+        $mailFromName = ($settings['email']['fromName'] ?? false) ?: ($this->loginlinkExtensionConfiguration['pluginMailFromName'] ?? false) ?: ($GLOBALS['TYPO3_CONF_VARS']['MAIL']['defaultMailFromName'] ?? false);
         if(!$mailFromAddress) {
-            throw new Exception('The pluginMailFromAddress extension configuration or $GLOBALS[\'TYPO3_CONF_VARS\'][\'MAIL\'][\'defaultMailFromAddress\'] needs to be configured to be able to send an e-email.');
+            throw new Exception('Either plugin.tx_loginlink_magicloginlinkform.settings.mail.fromAddress, pluginMailFromAddress of the extension configuration or $GLOBALS[\'TYPO3_CONF_VARS\'][\'MAIL\'][\'defaultMailFromAddress\'] needs to be configured to be able to send an e-email.');
         }
         $webSiteTitle = $GLOBALS['TYPO3_REQUEST']->getAttribute('site')->getConfiguration()['websiteTitle'] ?? '';
 

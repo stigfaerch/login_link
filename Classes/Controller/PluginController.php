@@ -132,7 +132,7 @@ class PluginController extends ActionController
     {
         try {
             $userId = $this->getUserIdFromEmail($email);
-            GeneralUtility::makeInstance(SendMail::class)->sendMailToFrontendUser($userId, $email);
+            GeneralUtility::makeInstance(SendMail::class)->sendMailToFrontendUser($userId, $email, $this->settings);
         } catch (TransportExceptionInterface $exception) {
             $this->redirect('showForm', null, null, ['email' => $email,
                 'errorMessage' => $this->getLanguageService()->getLL('plugin.mailer_sending_error')]);
