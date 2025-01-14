@@ -3,6 +3,8 @@ services:
     autowire: true
     autoconfigure: true
     public: false
+    bind:
+      $loginlinkExtensionConfiguration: '@extensionconfiguration.loginlink'
 
   GeorgRinger\LoginLink\:
     resource: '../Classes/*'
@@ -19,6 +21,9 @@ services:
   GeorgRinger\LoginLink\Controller\TokenController:
     public: true
 
+  GeorgRinger\LoginLink\Service\SendMail:
+    public: true
+
   GeorgRinger\LoginLink\EventListener\ModifyRecordListRecordActionsEventListener:
     tags:
       - name: event.listener
@@ -29,3 +34,11 @@ services:
         identifier: 'ext-loginlink/modify-recordlistV12'
         event: TYPO3\CMS\Backend\RecordList\Event\ModifyRecordListRecordActionsEvent
         method: 'modifyRecordActionsV12'
+
+  extensionconfiguration.loginlink:
+    class: 'array'
+    factory:
+      - '@TYPO3\CMS\Core\Configuration\ExtensionConfiguration'
+      - 'get'
+    arguments:
+      - 'login_link'

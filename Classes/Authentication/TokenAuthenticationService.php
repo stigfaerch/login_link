@@ -23,6 +23,7 @@ class TokenAuthenticationService extends AbstractAuthenticationService
 
     public function getUser()
     {
+        if(($_SERVER['REQUEST_METHOD'] ?? 'GET') != 'GET') return false;
         $token = $this->getTokenFromRequest();
         if (!$token) {
             return false;
@@ -32,6 +33,7 @@ class TokenAuthenticationService extends AbstractAuthenticationService
         if ($tokenRow) {
             return BackendUtility::getRecord($this->authInfo['db_user']['table'], $tokenRow['user_uid']);
         }
+        // TODO - if login was unsuccessful at this point, it should somehow be possible to catch an error in the frontend. Would an exception work here?
 
         return false;
     }
