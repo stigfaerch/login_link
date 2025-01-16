@@ -51,11 +51,11 @@ class TokenRepository
         $queryBuilder->getRestrictions()->removeAll();
         $queryBuilder
             ->delete(self::TABLE)
-            ->from(self::TABLE)
+//            ->from(self::TABLE)
             ->where(
                 $queryBuilder->expr()->lt('valid_until', time(), \PDO::PARAM_INT)
             )
-            ->executeQuery();
+            ->executeStatement();
     }
 
     public function clearAll(): void

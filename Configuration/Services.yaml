@@ -9,8 +9,8 @@ services:
   GeorgRinger\LoginLink\:
     resource: '../Classes/*'
 
-  GeorgRinger\LoginLink\Repository\LoginLinkRepository:
-    public: true
+#  GeorgRinger\LoginLink\Repository\LoginLinkRepository:
+#    public: true
 
   GeorgRinger\LoginLink\Service\TokenGenerator:
     public: true

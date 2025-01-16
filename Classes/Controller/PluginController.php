@@ -3,20 +3,16 @@
 namespace GeorgRinger\LoginLink\Controller;
 
 use GeorgRinger\LoginLink\Exception\UserValidationException;
-use GeorgRinger\LoginLink\Repository\TokenRepository;
 use GeorgRinger\LoginLink\Service\SendMail;
-use GeorgRinger\LoginLink\Service\TokenGenerator;
 use Psr\Http\Message\ResponseInterface;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
-use TYPO3\CMS\Core\Database\Query\Restriction\HiddenRestriction;
 use TYPO3\CMS\Core\Exception;
-use TYPO3\CMS\Core\Localization\LanguageService;
-use TYPO3\CMS\Core\TypoScript\TypoScriptService;
+use TYPO3\CMS\Core\Localization\LanguageServiceFactory;
 use TYPO3\CMS\Core\Utility\ArrayUtility;
+use TYPO3\CMS\Core\Utility\Exception\MissingArrayPathException;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Core\Utility\StringUtility;
 use TYPO3\CMS\Extbase\Configuration\ConfigurationManager;
 use TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface;
 use TYPO3\CMS\Extbase\Http\ForwardResponse;
@@ -26,21 +22,14 @@ use TYPO3\CMS\Extbase\Mvc\View\ViewInterface;
 
 class PluginController extends ActionController
 {
-    protected TokenGenerator $tokenGenerator;
-    protected TokenRepository $tokenRepository;
-
     protected array $settingsAsTypoScriptArray = [];
-
-    protected LanguageService $languageService;
 
     /**
      * @param ConfigurationManagerInterface $configurationManager
      */
-    public function __construct(TokenGenerator $tokenGenerator, TokenRepository $tokenRepository)
-    {
-        $this->tokenGenerator = $tokenGenerator;
-        $this->tokenRepository = $tokenRepository;
-    }
+    public function __construct(
+        private readonly LanguageServiceFactory $LanguageServiceFactory,
+    ){}
 
     protected function initializeAction(): void
     {
@@ -85,7 +74,10 @@ class PluginController extends ActionController
         }
 
         if ($email === null && ($postVar = $this->request->getAttribute('currentContentObject')->data['postVar'] ?? null)) {
-            $email = ArrayUtility::getValueByPath($GLOBALS['_POST'], $postVar, '.') ?? null;
+            try {
+                $email = ArrayUtility::getValueByPath($GLOBALS['_POST'], $postVar, '.') ?? null;
+            } catch (MissingArrayPathException $e) {
+            }
         }
 
         return $email;
@@ -113,19 +105,20 @@ class PluginController extends ActionController
      * @throws StopActionException
      * @throws \Doctrine\DBAL\Driver\Exception
      */
-    public function sendMailAction(string $email = ''): void
+    public function sendMailAction(string $email = ''): ResponseInterface
     {
         try {
             $userId = $this->getUserIdFromEmail($email);
             GeneralUtility::makeInstance(SendMail::class)->sendMailToFrontendUser($userId, $email, $this->settings);
         } catch (TransportExceptionInterface $exception) {
             $this->redirect('showForm', null, null, ['email' => $email,
-                'errorMessage' => $this->getLanguageService()->getLL('plugin.mailer_sending_error')]);
+                'errorMessage' => $this->getTranslatedLabel('LLL:EXT:login_link/Resources/Private/Language/locallang.xlf:plugin.mailer_sending_error')]);
             error_log($exception->getMessage());
         } catch (UserValidationException $exception) {
             $this->redirect('showForm', null, null, ['email' => $email,
                 'errorMessage' => $exception->getMessage()]);
         }
+        return $this->htmlResponse();
     }
 
     /**
@@ -134,7 +127,7 @@ class PluginController extends ActionController
     private function getUserIdFromEmail(string $email): int
     {
         if (!GeneralUtility::validEmail($email)) {
-            $validationError = $this->getLanguageService()->getLL('plugin.validation_email_syntax_error');
+            $validationError = ['message' => $this->getTranslatedLabel('LLL:EXT:login_link/Resources/Private/Language/locallang.xlf:plugin.validation_email_syntax_error'), 'code' => 1736953771];
         } else {
             $qb = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('fe_users');
             $qb->getRestrictions()->removeAll()->add(GeneralUtility::makeInstance(DeletedRestriction::class));
@@ -145,11 +138,11 @@ class PluginController extends ActionController
             }
             $users = $qb->execute()->fetchAllKeyValue();
             if (count($users) === 0) {
-                $validationError = ['message' => $this->getLanguageService()->getLL('plugin.validation_no_users_found_error'), 'code' => 1704878341];
+                $validationError = ['message' => $this->getTranslatedLabel('LLL:EXT:login_link/Resources/Private/Language/locallang.xlf:plugin.validation_no_users_found_error'), 'code' => 1704878341];
             } elseif (count($users) > 1) {
-                $validationError = ['message' => $this->getLanguageService()->getLL('plugin.validation_multiple_users_found_error'), 'code' => 1704878342];
+                $validationError = ['message' => $this->getTranslatedLabel('LLL:EXT:login_link/Resources/Private/Language/locallang.xlf:plugin.validation_multiple_users_found_error'), 'code' => 1704878342];
             } elseif (current($users) === 1) {
-                $validationError = ['message' => $this->getLanguageService()->getLL('plugin.validation_disabled_user_found_error'), 'code' => 1704878343];
+                $validationError = ['message' => $this->getTranslatedLabel('LLL:EXT:login_link/Resources/Private/Language/locallang.xlf:plugin.validation_disabled_user_found_error'), 'code' => 1704878343];
             } else {
                 return (int)key($users);
             }
@@ -157,12 +150,14 @@ class PluginController extends ActionController
         throw new UserValidationException($validationError['message'], $validationError['code']);
     }
 
-    protected function getLanguageService(): LanguageService
+    private function getTranslatedLabel(string $key): string
     {
-        if (!isset($GLOBALS['LANG'])) {
-            $GLOBALS['LANG'] = GeneralUtility::makeInstance(LanguageService::class);
-        }
-        return $GLOBALS['LANG'];
+        $language =
+            $this->request->getAttribute('language')
+            ?? $this->request->getAttribute('site')->getDefaultLanguage();
+        $languageService = $this->LanguageServiceFactory->createFromSiteLanguage($language);
+
+        return $languageService->sL($key);
     }
 
     protected function getStoragePid(): int
