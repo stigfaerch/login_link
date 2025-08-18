@@ -136,7 +136,7 @@ class PluginController extends ActionController
             if (($pageId = $this->getStoragePid()) !== 0) {
                 $qb->andWhere($qb->expr()->eq('pid', $qb->createNamedParameter($pageId)));
             }
-            $users = $qb->execute()->fetchAllKeyValue();
+            $users = $qb->executeQuery()->fetchAllKeyValue();
             if (count($users) === 0) {
                 $validationError = ['message' => $this->getTranslatedLabel('LLL:EXT:login_link/Resources/Private/Language/locallang.xlf:plugin.validation_no_users_found_error'), 'code' => 1704878341];
             } elseif (count($users) > 1) {
