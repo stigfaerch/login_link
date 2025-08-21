@@ -3,13 +3,17 @@
 namespace GeorgRinger\LoginLink\Controller;
 
 use GeorgRinger\LoginLink\Exception\UserValidationException;
-use GeorgRinger\LoginLink\Service\SendMail;
+use GeorgRinger\LoginLink\Repository\TokenRepository;
+use GeorgRinger\LoginLink\Service\TokenGenerator;
 use Psr\Http\Message\ResponseInterface;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
+use Symfony\Component\Mime\Address;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
 use TYPO3\CMS\Core\Exception;
 use TYPO3\CMS\Core\Localization\LanguageServiceFactory;
+use TYPO3\CMS\Core\Mail\FluidEmail;
+use TYPO3\CMS\Core\Mail\Mailer;
 use TYPO3\CMS\Core\Utility\ArrayUtility;
 use TYPO3\CMS\Core\Utility\Exception\MissingArrayPathException;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
@@ -19,6 +23,7 @@ use TYPO3\CMS\Extbase\Http\ForwardResponse;
 use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
 use TYPO3\CMS\Extbase\Mvc\Exception\StopActionException;
 use TYPO3\CMS\Extbase\Mvc\View\ViewInterface;
+use TYPO3\CMS\Extbase\Utility\LocalizationUtility;
 
 class PluginController extends ActionController
 {
@@ -29,6 +34,8 @@ class PluginController extends ActionController
      */
     public function __construct(
         private readonly LanguageServiceFactory $LanguageServiceFactory,
+        private readonly TokenGenerator $tokenGenerator,
+        private readonly TokenREPOSITORY $tokenRepository,
     ){}
 
     protected function initializeAction(): void
@@ -109,7 +116,7 @@ class PluginController extends ActionController
     {
         try {
             $userId = $this->getUserIdFromEmail($email);
-            GeneralUtility::makeInstance(SendMail::class)->sendMailToFrontendUser($userId, $email, $this->settings);
+            $this->sendMailToFrontendUser($userId, $email);
         } catch (TransportExceptionInterface $exception) {
             $this->redirect('showForm', null, null, ['email' => $email,
                 'errorMessage' => $this->getTranslatedLabel('LLL:EXT:login_link/Resources/Private/Language/locallang.xlf:plugin.mailer_sending_error')]);
@@ -164,4 +171,54 @@ class PluginController extends ActionController
     {
         return $this->configurationManager->getConfiguration(ConfigurationManagerInterface::CONFIGURATION_TYPE_FRAMEWORK)['persistence']['storagePid'] ?? 0;
     }
+
+
+    /**
+     * @throws Exception
+     * @throws TransportExceptionInterface
+     */
+    public function sendMailToFrontendUser(int $recordId, string $receiverEmailAddress): void
+    {
+//        $this->getLanguageService()->includeLLFile('EXT:login_link/Resources/Private/Language/locallang.xlf');
+
+        $authType = 'fe';
+        $token = $this->tokenGenerator->generate();
+        $this->tokenRepository->add(
+            $recordId,
+            $authType,
+            $token,
+            0,
+            15
+        );
+        $url = GeneralUtility::makeInstance(\TYPO3\CMS\Extbase\Mvc\Web\Routing\UriBuilder::class)
+            ->setRequest($this->request)
+            ->setTargetPageUid($GLOBALS['TYPO3_REQUEST']->getAttribute('frontend.controller')->id)
+            ->setArguments(['byToken' => $token, 'logintype' => 'login'])
+            ->setCreateAbsoluteUri(true)
+            ->buildFrontendUri();
+
+        $email = GeneralUtility::makeInstance(FluidEmail::class);
+        $email->setRequest($GLOBALS['TYPO3_REQUEST']);
+        $mailFromAddress = ($this->settings['email']['fromAddress'] ?? false) ?: ($this->loginlinkExtensionConfiguration['pluginMailFromAddress'] ?? false) ?: ($GLOBALS['TYPO3_CONF_VARS']['MAIL']['defaultMailFromAddress'] ?? false);
+        $mailFromName = ($this->settings['email']['fromName'] ?? false) ?: ($this->loginlinkExtensionConfiguration['pluginMailFromName'] ?? false) ?: ($GLOBALS['TYPO3_CONF_VARS']['MAIL']['defaultMailFromName'] ?? false);
+        if(!$mailFromAddress) {
+            throw new Exception('Either plugin.tx_loginlink_magicloginlinkform.settings.mail.fromAddress, pluginMailFromAddress of the extension configuration or $GLOBALS[\'TYPO3_CONF_VARS\'][\'MAIL\'][\'defaultMailFromAddress\'] needs to be configured to be able to send an e-email.');
+        }
+        $webSiteTitle = $GLOBALS['TYPO3_REQUEST']->getAttribute('site')->getConfiguration()['websiteTitle'] ?? '';
+
+        $email
+            ->to($receiverEmailAddress)
+            ->from(new Address($mailFromAddress, $mailFromName))
+            ->subject(LocalizationUtility::translate('plugin.email_subject','login_link', [$webSiteTitle]))
+            ->format('html') // only HTML mail
+            ->setTemplate('MagicLoginLink')
+            ->assign('headline', LocalizationUtility::translate('plugin.email_subject','login_link', [$webSiteTitle]))
+            ->assign('introduction', LocalizationUtility::translate('plugin.email_introduction','login_link', [$receiverEmailAddress]))
+            ->assign('content', LocalizationUtility::translate('plugin.email_content','login_link', [$webSiteTitle]))
+            ->assign('email', $receiverEmailAddress)
+            ->assign('loginUrl', $url)
+            ->assign('site', $GLOBALS['TYPO3_REQUEST']->getAttribute('site')->getConfiguration());
+        GeneralUtility::makeInstance(Mailer::class)->send($email);
+    }
+
 }

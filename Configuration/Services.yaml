@@ -21,9 +21,6 @@ services:
   GeorgRinger\LoginLink\Controller\TokenController:
     public: true
 
-  GeorgRinger\LoginLink\Service\SendMail:
-    public: true
-
   GeorgRinger\LoginLink\EventListener\ModifyRecordListRecordActionsEventListener:
     tags:
       - name: event.listener
