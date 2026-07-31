@@ -63,7 +63,7 @@ class TokenRepository
         $this->getConnection()->truncate(self::TABLE);
     }
 
-    public function add(int $userId, string $authType, string $token, int $invokedBy, int $validMinutes = null): void
+    public function add(int $userId, string $authType, string $token, int $invokedBy, ?int $validMinutes = null): void
     {
         $this->removeByUserId($userId, $authType);;
         $this->getConnection()->insert(
